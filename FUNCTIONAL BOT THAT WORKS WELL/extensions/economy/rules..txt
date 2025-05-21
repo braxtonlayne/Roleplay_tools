@@ -1,0 +1,612 @@
+# Writing Self-Contained File Descriptions
+## A Complete Guide for AI Models
+
+## Core Principle
+Each file description must contain enough detail that a developer could implement it with zero knowledge of any other files in the system. The description should be treated as if it's being handed to a developer who just joined the project and will work in complete isolation.
+
+## Required Description Components
+
+### 1. File Identification
+```
+filename.py
+├─ Type: [Service/Model/Controller/Utility/etc]
+├─ Language: [Python/TypeScript/etc + version requirements]
+└─ Architecture Role: [Where this fits in the broader system]
+```
+
+### 2. Complete Technical Specification
+
+```
+Technical Specification:
+├─ Purpose: 
+│  ├─ Primary responsibility (1 sentence)
+│  └─ Detailed explanation of the file's role (3-5 sentences)
+│
+├─ External Dependencies:
+│  ├─ Required packages/libraries with versions
+│  ├─ External services needed
+│  ├─ Environment variables required
+│  └─ Configuration files needed
+│
+├─ Internal Dependencies:
+│  ├─ Other system files this depends on
+│  │  └─ Exact interfaces/methods used from each
+│  └─ Expected behavior of those dependencies
+│
+├─ Public Interface:
+│  ├─ All exposed methods/functions with:
+│  │  ├─ Full method signature
+│  │  ├─ Parameter descriptions
+│  │  ├─ Return value specifications
+│  │  ├─ Example usage
+│  │  ├─ Error conditions
+│  │  └─ Side effects
+│  └─ Public properties/fields
+│
+├─ Internal Implementation:
+│  ├─ Required classes/methods
+│  ├─ Data structures used
+│  ├─ State management
+│  ├─ Algorithms implemented
+│  └─ Design patterns used
+│
+├─ Data Flow:
+│  ├─ Input sources
+│  ├─ Data transformations
+│  ├─ Storage mechanisms
+│  └─ Output destinations
+│
+├─ Error Handling:
+│  ├─ Custom exceptions defined
+│  ├─ Error conditions checked
+│  ├─ Recovery procedures
+│  └─ Error reporting
+│
+├─ Performance Requirements:
+│  ├─ Time complexity
+│  ├─ Space complexity
+│  ├─ Expected latency
+│  └─ Resource limitations
+│
+├─ Security:
+│  ├─ Authentication requirements
+│  ├─ Authorization checks
+│  ├─ Input validation
+│  └─ Security best practices
+│
+├─ Testing Requirements:
+│  ├─ Unit test scenarios
+│  ├─ Integration test requirements
+│  ├─ Mock objects needed
+│  └─ Test coverage expectations
+│
+└─ Operational Considerations:
+   ├─ Logging requirements
+   ├─ Monitoring metrics
+   ├─ Health checks
+   ├─ Debugging features
+   └─ Maintenance tasks
+```
+
+## Detailed Example
+
+### ❌ INSUFFICIENT Example:
+```
+auth_service.py
+- Handles authentication
+- Uses JWT tokens
+- Connects to user database
+- Has login/logout methods
+```
+
+### ✅ COMPLETE Example:
+```
+auth_service.py
+├─ Type: Service Class
+├─ Language: Python 3.9+
+├─ Architecture Role: Core authentication service in a microservices architecture
+
+Technical Specification:
+
+├─ Purpose:
+│  ├─ Primary: Provides secure user authentication and session management
+│  └─ Detailed: Handles user authentication, session token generation/validation,
+│     password security, and rate limiting. Acts as the central authority for 
+│     user identity and access control across the system. Maintains secure
+│     session state and handles token refresh mechanics.
+│
+├─ External Dependencies:
+│  ├─ Packages:
+│  │  ├─ argon2-cffi==21.3.0 (password hashing)
+│  │  ├─ pyjwt==2.4.0 (JWT token handling)
+│  │  ├─ redis==4.3.4 (rate limiting, session cache)
+│  │  └─ asyncpg==0.27.0 (postgres async driver)
+│  │
+│  ├─ Services:
+│  │  ├─ PostgreSQL 13+ (user storage)
+│  │  │  └─ Requires users table with specific schema (detailed below)
+│  │  └─ Redis 6+ (session/rate limit storage)
+│  │     └─ Requires dedicated database for session management
+│  │
+│  ├─ Environment Variables:
+│  │  ├─ JWT_SECRET_KEY: str (min 32 chars, high entropy)
+│  │  ├─ JWT_ALGORITHM: str (default: "HS256")
+│  │  ├─ POSTGRES_CONNECTION_STRING: str
+│  │  ├─ REDIS_CONNECTION_STRING: str
+│  │  ├─ PASSWORD_MIN_LENGTH: int (default: 12)
+│  │  ├─ MAX_LOGIN_ATTEMPTS: int (default: 5)
+│  │  └─ LOGIN_LOCKOUT_MINUTES: int (default: 15)
+│  │
+│  └─ Configuration:
+│     └─ /config/auth_config.yml (schema detailed below)
+│
+├─ Internal Dependencies:
+│  ├─ logger.py
+│  │  └─ Expects methods: error(), info(), debug()
+│  ├─ metrics.py
+│  │  └─ Expects methods: increment(), timing()
+│  └─ exceptions.py
+│     └─ Expects exceptions: ServiceError, ConfigError
+│
+├─ Public Interface:
+│  ├─ Class: AuthService
+│  │
+│  ├─ Constructor:
+│  │  ├─ Signature:
+│  │  │  def __init__(self, config_path: str,
+│  │  │               logger: Logger,
+│  │  │               metrics: MetricsClient)
+│  │  ├─ Parameters:
+│  │  │  ├─ config_path: Path to auth_config.yml
+│  │  │  ├─ logger: Logger instance for error reporting
+│  │  │  └─ metrics: MetricsClient for telemetry
+│  │  └─ Raises:
+│  │     ├─ ConfigError: If config file invalid/missing
+│  │     └─ ServiceError: If required services unreachable
+│  │
+│  ├─ Method: authenticate
+│  │  ├─ Signature:
+│  │  │  async def authenticate(
+│  │  │    self,
+│  │  │    username: str,
+│  │  │    password: str,
+│  │  │    client_ip: str,
+│  │  │    device_info: Dict[str, str]
+│  │  │  ) -> AuthResult
+│  │  │
+│  │  ├─ Parameters:
+│  │  │  ├─ username: User identifier (3-64 chars, alphanumeric+@._-)
+│  │  │  ├─ password: User password (raw, unhashed)
+│  │  │  ├─ client_ip: IP address for rate limiting
+│  │  │  └─ device_info: Dict containing:
+│  │  │     ├─ device_id: Unique device identifier
+│  │  │     ├─ device_type: [mobile/web/desktop]
+│  │  │     └─ app_version: Semantic version string
+│  │  │
+│  │  ├─ Returns:
+│  │  │  └─ AuthResult(TypedDict):
+│  │  │     ├─ success: bool
+│  │  │     ├─ session_token: Optional[str] (JWT token if success)
+│  │  │     ├─ refresh_token: Optional[str] (for token refresh)
+│  │  │     ├─ user_id: Optional[UUID] (if success)
+│  │  │     └─ error: Optional[str] (if not success)
+│  │  │
+│  │  ├─ Raises:
+│  │  │  ├─ RateLimitExceeded: If too many attempts
+│  │  │  ├─ ValidationError: If inputs invalid
+│  │  │  └─ ServiceError: If external services fail
+│  │  │
+│  │  ├─ Side Effects:
+│  │  │  ├─ Logs authentication attempts
+│  │  │  ├─ Updates rate limit counters
+│  │  │  ├─ Records metrics
+│  │  │  └─ Creates session in Redis
+│  │  │
+│  │  └─ Example:
+│  │     ```python
+│  │     result = await auth.authenticate(
+│  │       username="user@example.com",
+│  │       password="securepass123",
+│  │       client_ip="1.2.3.4",
+│  │       device_info={
+│  │         "device_id": "device123",
+│  │         "device_type": "web",
+│  │         "app_version": "1.0.0"
+│  │       }
+│  │     )
+│  │     ```
+│  │
+│  ├─ Method: validate_token
+│  │  [Similar detailed breakdown for each public method]
+│  │
+│  └─ Additional methods...
+│
+├─ Internal Implementation:
+│  ├─ Required Classes:
+│  │  ├─ _PasswordManager:
+│  │  │  ├─ Purpose: Handles password hashing/verification
+│  │  │  ├─ Methods: hash(), verify()
+│  │  │  └─ Uses Argon2id with configurable work factors
+│  │  │
+│  │  ├─ _SessionManager:
+│  │  │  ├─ Purpose: Manages session state in Redis
+│  │  │  └─ Methods: create(), validate(), revoke()
+│  │  │
+│  │  └─ _RateLimiter:
+│  │     ├─ Purpose: Tracks login attempts
+│  │     └─ Methods: check(), increment()
+│  │
+│  ├─ Data Structures:
+│  │  ├─ Session(TypedDict):
+│  │  │  ├─ user_id: UUID
+│  │  │  ├─ created_at: datetime
+│  │  │  ├─ expires_at: datetime
+│  │  │  ├─ device_info: Dict[str, str]
+│  │  │  └─ last_active: datetime
+│  │  │
+│  │  └─ Additional types...
+│  │
+│  ├─ State Management:
+│  │  ├─ Connection pools maintained for Postgres/Redis
+│  │  ├─ LRU cache for frequent lookups
+│  │  └─ Background task for session cleanup
+│  │
+│  └─ Algorithms:
+│     ├─ Token generation using JWT
+│     ├─ Password hashing with Argon2id
+│     └─ Rate limiting with sliding window
+│
+├─ Data Flow:
+│  ├─ Authentication Flow:
+│  │  1. Validate input format
+│  │  2. Check rate limits
+│  │  3. Retrieve user record
+│  │  4. Verify password
+│  │  5. Generate session
+│  │  6. Return tokens
+│  │
+│  ├─ Storage:
+│  │  ├─ Users Table Schema:
+│  │  │  ├─ id: UUID (primary key)
+│  │  │  ├─ username: VARCHAR(64) UNIQUE
+│  │  │  ├─ password_hash: VARCHAR(255)
+│  │  │  ├─ created_at: TIMESTAMP
+│  │  │  └─ status: VARCHAR(16)
+│  │  │
+│  │  └─ Redis Schema:
+│  │     ├─ sessions:{user_id} -> Session data
+│  │     └─ ratelimit:{ip} -> Attempt counters
+│
+├─ Error Handling:
+│  ├─ Custom Exceptions:
+│  │  ├─ AuthError(Exception):
+│  │  │  └─ Base class for auth-specific errors
+│  │  ├─ RateLimitExceeded(AuthError)
+│  │  ├─ ValidationError(AuthError)
+│  │  └─ ServiceError(AuthError)
+│  │
+│  ├─ Error Conditions:
+│  │  ├─ Invalid credentials
+│  │  ├─ Rate limit exceeded
+│  │  ├─ Account locked
+│  │  ├─ Service unavailable
+│  │  └─ Invalid token
+│  │
+│  └─ Recovery Procedures:
+│     ├─ Automatic retry for transient errors
+│     ├─ Circuit breaker for external services
+│     └─ Fallback to cached data where safe
+│
+├─ Performance Requirements:
+│  ├─ Latency:
+│  │  ├─ authenticate(): < 500ms p95
+│  │  ├─ validate_token(): < 100ms p95
+│  │  └─ logout(): < 200ms p95
+│  │
+│  ├─ Throughput:
+│  │  ├─ Minimum: 1000 auth attempts/second
+│  │  └─ Burst: 5000 auth attempts/second
+│  │
+│  └─ Resource Usage:
+│     ├─ Memory: < 500MB per instance
+│     └─ CPU: < 2 cores at full load
+│
+├─ Security:
+│  ├─ Password Requirements:
+│  │  ├─ Minimum length: 12 characters
+│  │  ├─ Required complexity
+│  │  └─ Password history check
+│  │
+│  ├─ Token Security:
+│  │  ├─ JWT signing requirements
+│  │  ├─ Token expiration
+│  │  └─ Refresh token rotation
+│  │
+│  └─ Rate Limiting:
+│     ├─ Per IP: 5 attempts/5 minutes
+│     ├─ Per username: 3 attempts/5 minutes
+│     └─ Lockout period: 15 minutes
+│
+├─ Testing Requirements:
+│  ├─ Unit Tests:
+│  │  ├─ Mock requirements
+│  │  ├─ Test scenarios
+│  │  └─ Coverage: 95% minimum
+│  │
+│  ├─ Integration Tests:
+│  │  ├─ Required test cases
+│  │  └─ External service mocks
+│  │
+│  └─ Performance Tests:
+│     ├─ Load test scenarios
+│     └─ Benchmark requirements
+│
+└─ Operational Considerations:
+   ├─ Logging:
+   │  ├─ Required log events
+   │  └─ Log levels per event
+   │
+   ├─ Metrics:
+   │  ├─ Authentication attempts
+   │  ├─ Success/failure rates
+   │  ├─ Latency measurements
+   │  └─ Rate limit triggers
+   │
+   ├─ Health Checks:
+   │  ├─ External service connectivity
+   │  ├─ Cache status
+   │  └─ Resource usage
+   │
+   └─ Maintenance:
+      ├─ Session cleanup
+      ├─ Token rotation
+      └─ Cache invalidation
+```
+
+
+## Why This Level of Detail Is Necessary
+
+1. **Complete Independence**
+   - Developer needs zero knowledge of other system components
+   - All interfaces and contracts must be explicitly defined
+   - No assumptions about system architecture or context
+   - Every dependency interface fully specified
+   - Clear boundaries between components
+
+2. **Unambiguous Implementation**
+   - Every behavior must be specifically defined
+   - All edge cases documented
+   - No room for interpretation
+   - Implementation choices explicitly stated
+   - Performance characteristics clearly specified
+
+3. **Future Maintainability**
+   - Complete understanding without tribal knowledge
+   - Clear upgrade/modification paths
+   - Documentation of why decisions were made
+   - Known limitations and constraints
+   - Technical debt clearly identified
+
+4. **Security and Compliance**
+   - Security requirements explicitly stated
+   - Compliance needs documented
+   - Data handling requirements specified
+   - Audit trail requirements included
+   - Access control rules defined
+
+5. **Operational Readiness**
+   - Monitoring requirements specified
+   - Alerting thresholds defined
+   - Backup/recovery procedures included
+   - Scaling considerations documented
+   - Maintenance procedures outlined
+
+## Common Pitfalls to Avoid
+
+1. **Assuming Context**
+   ❌ Bad:
+   ```
+   "Uses the standard database connection"
+   "Follows our usual logging format"
+   "Implements the team's error handling approach"
+   ```
+   ✅ Good:
+   ```
+   "Requires PostgreSQL 13+ connection with following schema: [detailed schema]"
+   "Logging format: [specific format with all fields]"
+   "Error handling: [complete error handling specification]"
+   ```
+
+2. **Incomplete Interface Definitions**
+   ❌ Bad:
+   ```
+   "authenticate() - Handles user login"
+   "process_data() - Processes the input data"
+   ```
+   ✅ Good:
+   ```
+   "authenticate(username: str, password: str, device_info: Dict[str, str]) -> AuthResult
+    - Parameters:
+      * username: [format requirements]
+      * password: [format requirements]
+      * device_info: [required fields and formats]
+    - Returns:
+      * AuthResult: [detailed structure]
+    - Raises:
+      * Specific exceptions with conditions
+    - Side effects:
+      * All state changes listed"
+   ```
+
+3. **Vague Performance Requirements**
+   ❌ Bad:
+   ```
+   "Should handle high load"
+   "Needs to be fast"
+   ```
+   ✅ Good:
+   ```
+   "Performance Requirements:
+    - Latency: < 100ms p95, < 200ms p99
+    - Throughput: 1000 requests/second sustained
+    - Memory: < 500MB per instance
+    - CPU: < 2 cores at full load
+    - Scaling: Horizontal with sticky sessions"
+   ```
+
+4. **Insufficient Error Handling**
+   ❌ Bad:
+   ```
+   "Handle errors appropriately"
+   "Return error if invalid"
+   ```
+   ✅ Good:
+   ```
+   "Error Handling:
+    1. Input Validation Errors:
+       - Specific conditions that trigger
+       - Error response format
+       - Logging requirements
+       - Metric requirements
+    2. External Service Errors:
+       - Retry policy (3 attempts, exponential backoff)
+       - Circuit breaker thresholds
+       - Fallback behavior
+       - Customer impact mitigation"
+   ```
+
+## Implementation Quality Checklist
+
+Every file description must be verified against this checklist:
+
+1. **Completeness**
+   - [ ] All public interfaces fully specified
+   - [ ] All dependencies explicitly listed
+   - [ ] All configuration requirements detailed
+   - [ ] All error conditions documented
+   - [ ] All performance requirements specified
+
+2. **Clarity**
+   - [ ] No ambiguous terms or phrases
+   - [ ] No unexplained acronyms
+   - [ ] No assumptions about context
+   - [ ] Clear separation of requirements vs suggestions
+   - [ ] Examples provided for complex operations
+
+3. **Correctness**
+   - [ ] Interface definitions are technically accurate
+   - [ ] Data types are properly specified
+   - [ ] Performance requirements are realistic
+   - [ ] Security requirements are current
+   - [ ] Compliance requirements are valid
+
+4. **Testability**
+   - [ ] All behaviors are verifiable
+   - [ ] Test requirements are specific
+   - [ ] Mock requirements are detailed
+   - [ ] Performance criteria are measurable
+   - [ ] Coverage requirements are defined
+
+5. **Operability**
+   - [ ] Monitoring requirements specified
+   - [ ] Alerting criteria defined
+   - [ ] Backup/recovery procedures included
+   - [ ] Maintenance tasks documented
+   - [ ] Troubleshooting guides provided
+
+## Special Considerations By File Type
+
+### 1. API Endpoints
+```
+Additional Required Details:
+├─ Request rate limiting
+├─ Authentication mechanisms
+├─ Request/response formats
+├─ Status codes and meanings
+├─ Header requirements
+├─ CORS policies
+├─ Cache control
+└─ API versioning
+```
+
+### 2. Database Models
+```
+Additional Required Details:
+├─ Complete schema definition
+├─ Index requirements
+├─ Constraint definitions
+├─ Cascade behaviors
+├─ Migration requirements
+├─ Partition strategy
+└─ Backup requirements
+```
+
+### 3. Service Classes
+```
+Additional Required Details:
+├─ Service boundaries
+├─ State management
+├─ Resource lifecycle
+├─ Circuit breaking
+├─ Failover behavior
+├─ Cache invalidation
+└─ Service discovery
+```
+
+### 4. Background Jobs
+```
+Additional Required Details:
+├─ Scheduling requirements
+├─ Concurrency limits
+├─ Resource constraints
+├─ Failure handling
+├─ Job prioritization
+├─ Status tracking
+└─ Cleanup procedures
+```
+
+### 5. Configuration Files
+```
+Additional Required Details:
+├─ Schema definition
+├─ Required vs optional fields
+├─ Default values
+├─ Environment overrides
+├─ Validation rules
+├─ Reload behavior
+└─ Secure field handling
+```
+
+## Making Files Future-Proof
+
+1. **Version Compatibility**
+   ```
+   Version Requirements:
+   ├─ Minimum versions
+   ├─ Maximum tested versions
+   ├─ Known incompatibilities
+   ├─ Upgrade paths
+   └─ Deprecation plans
+   ```
+
+2. **Scalability Considerations**
+   ```
+   Scalability Requirements:
+   ├─ Maximum load characteristics
+   ├─ Scaling triggers
+   ├─ Resource requirements
+   ├─ Bottlenecks
+   └─ Scale limitations
+   ```
+
+3. **Maintainability Requirements**
+   ```
+   Maintenance Considerations:
+   ├─ Code organization
+   ├─ Documentation standards
+   ├─ Technical debt tracking
+   ├─ Refactoring guidelines
+   └─ Review requirements
+   ```
+
+Remember: A developer should be able to implement any file correctly with only the information in its description. If there's any doubt about whether to include a detail, include it.

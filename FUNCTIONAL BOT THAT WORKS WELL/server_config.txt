@@ -1,0 +1,8 @@
+CATEGORY: General
+CHANNEL: welcome | Welcome to our server!
+CHANNEL: rules
+CATEGORY: Discussion
+CHANNEL: general-chat
+CHANNEL: off-topic
+ROLE: Moderator,FF0000,manage_messages,kick_members
+ROLE: Member,00FF00,send_messages,read_messages
